@@ -1,0 +1,13 @@
+*.root
+*.tgz
+*.tar.gz
+*.swp
+*.o
+*.txt
+*.cmd
+*.mod
+*.ko
+*.symvers
+*.order
+*.swo
+__pycache__

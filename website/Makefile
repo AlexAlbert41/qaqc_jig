@@ -1,24 +1,17 @@
-default: build
+all: wavedump/src/wavedump
 
-INSTALL=install
+CAENUSBdrvB-1.5.4/CAENUSBdrvB.o:
+	$(MAKE) -C CAENUSBdrvB-1.5.4
 
-SERVER_NAME=$(shell cat settings.txt | grep SERVER_NAME | awk '{print $$3}' | tr -d '"')
+install-deps: CAENUSBdrvB-1.5.4/CAENUSBdrvB.o
+	cd CAENVMELib-3.3.0/lib && ./install_x64
+	cd CAENComm-1.5.0/lib && ./install_x64
+	cd CAENDigitizer-2.17.0 && ./install_64
+	$(MAKE) -C CAENUSBdrvB-1.5.4 install
 
-.DEFAULT:
-	./setup.py $@
+wavedump/src/wavedump: wavedump/src/Makefile wavedump/src/wavedump.c
+	$(MAKE) -C wavedump
 
-install:
-	mkdir -p /opt/btl-testing
-	mkdir -p /var/log/gunicorn
-	chown nginx:nginx /var/log/gunicorn
-	rsync -a --chown=nginx:nginx . /opt/btl-testing
-	$(INSTALL) gunicorn.socket /etc/systemd/system
-	$(INSTALL) gunicorn.service /etc/systemd/system
-	$(INSTALL) nginx.conf /etc/nginx/nginx.conf
-	sed -i "s/127.0.0.1/$(SERVER_NAME)/g" /etc/nginx/nginx.conf
-	systemctl enable --now gunicorn.socket
-	systemctl enable --now gunicorn
-	service gunicorn restart
-	sudo -u postgres psql -f btl_qa.sql btl_qa
-
-.PHONY: install
+install: CAENUSBdrvB-1.5.4/CAENUSBdrvB.o
+	$(MAKE) -C wavedump install
+	$(MAKE) -C python install

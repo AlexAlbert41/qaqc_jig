@@ -1,139 +1,153 @@
-# BTL Testing Website
+Installation
+------------
 
-This directory contains the files necessary to run a copy of the web server for
-collating the BTL module testing results. Data is stored in a postgres database
-that is uploaded by the analysis software in the `wavedump` directory of this
-repository. The data is then shared using a website run by Flask.
+These installation instructions have only been tested on Fedora 36 and Rocky
+Linux 8.
 
-## Installation
+First, you should install hdf5, numpy, scipy, psycopg2, root, and pyroot with the following command:
 
-The server must be running CentOS-8. First, make sure all the available
-software is updated:
+```
+$ sudo dnf install hdf5 hdf5-devel python3-numpy python3-scipy python3-psycopg2 root python3-root python3-h5py python3-matplotlib
+```
+
+Then, you can install the kernel modules and libraries required to talk to the
+CAEN digitizer by running the following command:
+
+```
+$ sudo make install-deps
+```
+
+Note that the kernel module will need to be rebuilt if you ever update the
+software on the computer!
+
+Finally, you can build and install the wavedump program and the GUI:
+
+```
+$ make
+$ sudo make install
+```
+
+Running
+-------
+
+Typical usage for the assembly center will involve running the GUI by running:
 
 ```console
-# dnf update -y
+$ qaqc-gui
 ```
 
-Next, we install and enable the postgres server software:
+Instructions for running the GUI can be found in the "QA/QC Jig For Dummies"
+document. For the rest of the README I will describe the lower level commands
+you can use to take data and analyze it.
 
-```console
-# dnf install postgresql postgresql-server
-# postgresql-setup --initdb --unit postgresql
-# systemctl start postgresql
-# systemctl enable postgresql
-```
-
-### Setting up the Database
-
-Now, we need to set up the database:
-
-```console
-# install -o postgres btl_qa.sql /var/lib/pgsql
-# su postgres
-# cd
-# createdb btl_qa
-# psql btl_qa -f btl_qa.sql
-```
-
-Now, we need to create the passwords for the three users: btl_admin, btl, and
-cms. The btl_admin account has complete control over the database and should be
-limited to the server administrator. The btl account is for the BTL assembly
-centers and the cms account is the read only account for the website. To set up
-each of these passwords, sign in as the postgres user and run the following
-commands:
-
-```console
-# su postgres # if not already
-# psql
-postgres=# alter user btl_admin with password '';
-ALTER ROLE
-postgres=# alter user btl with password '';
-ALTER ROLE
-postgres=# alter user cms with password '';
-ALTER ROLE
-```
-
-where you need to fill in each of the passwords. If you need to create a
-password quickly you can use the following command:
-
-```console
-cat /dev/urandom | tr -dc 'a-zA-Z0-9' | head -c 10
-```
-
-Now, we need to configure the database to allow TCP connections:
+The program `wavedump` is a program which takes data from the CAEN digitizer and writes out the data in the HDF5 file format. An example:
 
 ```
-# vim /var/lib/pgsql/data/postgresql.conf
+$ wavedump -o test.hdf5 -n 1000 -t self --threshold -0.1 -l spe
 ```
 
-and change the following line:
-
-```
-listen_addresses = '*'
-```
-
-Next, edit `vim /var/lib/pgsql/data/pg_hba.conf` and change the following line:
-
-```
-# IPv4 local connections:
-host    all             all             127.0.0.1/32            md5
-# IPv6 local connections:
-host    all             all             ::1/128                 md5
-```
-
-Finally, restart the database:
-
-```console
-# systemctl restart postgresql
-```
-
-### Configuring the Webserver
-
-Next, we install the software necessary to run the webserver:
-
-```console
-# dnf install python3-flask python3-gunicorn python3-sqlalchemy python3-psycopg2 python3-pytz nginx httpd-tools python3-wtforms
-# systemctl start nginx
-# systemctl enable nginx
-```
-
-Next, create a file in this directory named `settings.txt` with the following
-information:
-
-```console
-SERVER_NAME = [url of server]
-DB_USER = "cms"
-DB_BTL_USER = "btl"
-DB_HOST = "localhost"
-DB_PORT = 5432
-DB_NAME = "btl_qa"
-DB_PASS = "password"
-SECRET_KEY = [secret key]
-```
-
-changing `password` to the default cms password for the database. You can
-generate a secure secret key by running:
+will take 1000 events triggering on the channels themselves at a threshold of
+100 mV and will store the data in the dataset 'spe'. You can look at the raw
+data by running:
 
 ```console
 $ python
->>> import os
->>> os.urandom(12).hex()
+>>> import h5py
+>>> import matplotlib.pyplot as plt
+>>> import numpy as np
+>>> f = h5py.File("test.hdf5","r")
+>>> data = f['spe']['ch0'][0]/2**12
+>>> data -= np.mean(data[:100]) # subtract baseline
+>>> plt.plot(data)
+>>> plt.show()
 ```
 
-Change the server_name in the nginx.conf configuration file:
+Analyzing Results
+-----------------
 
-```console
-# vim nginx.conf
+You can analyze the results by running:
+
+```
+$ analyze-waveforms test.hdf5 -o test.root --plot
 ```
 
-Create a password for the website:
+Uploading Results
+-----------------
 
-```console
-htpasswd -c /opt/btl-testing/.htpasswd cms
+First, you need to set an environment variable containing the password to the
+database, and ideally add it to your .bashrc:
+
+```
+$ echo 'export BTL_DB_HOST=[HOSTNAME]' >> ~/.bashrc
+$ echo 'export BTL_DB_PASS=[PASSWORD]' >> ~/.bashrc
+$ source ~/.bashrc
 ```
 
-Finally, run:
+You can analyze the results by running:
 
-```console
-$ sudo make install
 ```
+$ analyze-waveforms test.hdf5 -o test.root --upload
+```
+
+Stepper motor
+-----------------
+
+The stepper motor driving a carrier on a sliding rail is set up for the automation of
+transporting the radiactive source that will need to stop at each sensor module during the QAQC.
+The subsystem consists of the following components:
+
+- A motor driver board (carrying DRV8825) that communicates between teensy and the stepper motor
+- A stepper motor that is hooked up with a sliding rail on which the carrier moves
+- An inductive proximity sensor (TL-Q5MC1-Z NPN) that locates the home position
+
+Before the installation, the driver board needs to be solded with a electrolytic capacitor (100uF) between the pins VMOT and GND following [DRV8825 carrier instructions](https://www.pololu.com/product/2133). This capacitor protects the driver from high voltage spikes that could exceed 45 V (the max voltage for DRV8825). Note the polarity of the capacitor pins!
+
+The driver board can be plugged in the socket reserved on the control board.
+It connects to teensy for signal control/feedback and to the +12 V power supply via VMOT.
+It connects to the stepper motor by the pins at the coner of the control board (A1,A2,B1,B2).
+
+Limiting the current is necessary to avoid buring the chip especially at high step rates.
+The intructions from the board provider should be followed to tune the current limit ([video](https://youtu.be/89BHS9hfSUk)). The current limit is equal to VRef*2. In our case, we tune VRef to about 1 V which corresponds to a ~2 A current limit. This value is below the max current of the chip and the rated current of the stepper motor introduced later. We measured the VRef from the potentiometer instead of the circled point. The latter did not work. The measurement needs power and correct setting. For the QAQC setup, we switch on all power and do the following
+- Connect to teensy with qaqc-client via eithernet
+```
+qaqc-client --ip-address 192.168.1.177
+```
+- Set nRESET to HIGH
+```
+>>> set_pin 2 1
+```
+- Set nSLEEP to HIGH
+```
+>>> set_pin 1 1
+```
+- Measure VRef
+
+The stepper motor is with four wires and two phases (3 A/phase rated).
+In practice, we feed in about 0.5 A and it works well given that the load is very light.
+The wiring is:
+- Stepper motor A+ --> control board A1
+- Stepper motor A- --> control board A2
+- Stepper motor B+ --> control board B1
+- Stepper motor B- --> control board B2
+
+If you find the moving direction is the opposite, simply swaping two wires should work (e.g. A- --> A1, A+ --> A2) without touching the code.
+
+The inductive proximity sensor TL-Q5MC1-Z NPN is used to detect if the source carrier on the sliding rail reaches the home position, from where the distance to all the module positions is used to instruct the stepper motor. This sensor has 3 wires.
+- The brown wire is connected to +5 V power supply
+- The black wire is connected to the teensy pin step_home (Pin 17). This pin has an external pull down resistor of 10k ohm, thus we bridge this pin and the brown wire (+5 V) with a resistor of 10k ohm in order to split the voltage and keep it lower than 3.3 V at Pin 17
+- The blue wire is grounded
+
+In such wiring, the teensy pin step_home (Pin 17) will always be HIGH when the source carrier is not at home and be LOW when home.
+
+With all the above setup, the stepper motor is programed in qaqc-gui:
+- Go to home before the data taking
+- Move to the module position only for the ones ticked in qaqc-gui
+- Move back to the home position after all data taking
+
+For manual control of the stepper motor, one can connect teensy with eithernet
+```
+>>> step 1000
+>>> step -1000
+>>> step_home
+```
+for moving 1000 steps forward, backward and to home.
