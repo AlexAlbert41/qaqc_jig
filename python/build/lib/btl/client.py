@@ -5,6 +5,7 @@ Author: Anthony LaTorre
 Last Updated: Jan 24, 2023
 """
 import socket
+import time
 
 DEFAULT_IP = '192.168.0.177'
 DEFAULT_PORT = 8888
@@ -18,9 +19,13 @@ class Client(object):
 
     def query(self, msg, timeout=10):
         self.sock.settimeout(timeout)
-        self.send(msg)
-        #print(self.sock.getsockname())
-        return self.recv()
+        for i in range(10):
+            try:
+                self.send(msg)
+                return self.recv() 
+            except socket.timeout:
+                print(msg, "timed out on try", i)
+        raise socket.timeout
 
     def send(self, msg):
         if not msg.endswith("\n"):

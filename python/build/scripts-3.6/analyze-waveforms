@@ -61,7 +61,7 @@ if __name__ == '__main__':
 
     
     #calib_file = ROOT.TFile("/home/cmsdaq/DAQ/qaqc_calibration/master_calib.root", "READ")
-    #calib_file_CERN_Module = ROOT.TFile("/home/cptlab/qaqc-gui_output/CERN_Module_Calibration_Output/CERN_Module_calib.root", "READ")
+    #calib_file_CERN_Module = ROOT.TFile("/home/cptlab/AlexAlbert41/qaqc_jig/calib_files/CERN_Module_calib.root", "READ")
     gMasterCalib_spe = None
     gMasterCalib_lyso = None
     print(args.slot,args.plot)

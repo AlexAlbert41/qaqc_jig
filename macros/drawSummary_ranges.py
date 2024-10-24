@@ -14,25 +14,41 @@ import tdrstyle
 #from typing import NamedTuple
 
 
-data_path = '/data1/SMQAQC/PRODUCTION/'
-selections = []
+#data_path = '/data1/SMQAQC/PRODUCTION/'
+#selections = []
 #plotDir = '/data1/html/data1/SMQAQC/PRODUCTION/summaryPlots_SMID_42to152/'
-plotDir = '/data1/html/data1/SMQAQC/PRODUCTION/summaryPlots_SMID_1to152/'
+#plotDir = '/data1/html/data1/SMQAQC/PRODUCTION/summaryPlots_SMID_1to152/'
+
+data_path = '/data/QAQC_SM/qaqc-gui_output/Summary_Plots_First37_NoCal/SM_QAQC_Production/'
+selections = []
+plotDir = '/data/QAQC_SM/qaqc-gui_output/Summary_Plots_NewDirectory_NoCal_AddedPlots_Ranges/'
 
 
 #runs = ["63-66","85-88","90-93","95-101","104-104"] # 42-152
-runs = ["50-56","63-66","85-88","90-93","95-101","104-104"] # 1-152
+#runs = ["50-56","63-66","85-88","90-93","95-101","104-104"] # 1-152
+runs = ["10-200"]
 #modules_acc = ["42-152"] # 42-152
 modules_acc = ["1-152"] # 1-152
 
 
-MIN_SPE_ch = 3.4
-MAX_SPE_ch = 4.4
+MIN_SPE_ch = -1000 # modified by Alex
+MAX_SPE_ch = 1000
 MIN_LO_bar = 0.90 * 3150.
 MIN_LO_ch = 0.85 * 3150.
 MAX_LO_ASYMM_bar = 0.06
 MIN_LO_ASYMM_ch = -0.15
 MAX_LO_ASYMM_ch = 0.15
+
+
+#MIN_SPE_ch = -1000 # modified by Alex
+#MAX_SPE_ch = 1000
+#MIN_LO_bar = 0
+#MIN_LO_ch = 0
+#MAX_LO_ASYMM_bar = 1
+#MIN_LO_ASYMM_ch = -0.15
+#MAX_LO_ASYMM_ch = 0.15
+
+
 
 nCatA = 0
 nCatB = 0
@@ -94,7 +110,7 @@ list_modules = list(map(str, list_modules))
 # add barcode
 prefix = "32110020"
 list_modules = ["{}{:06d}".format(prefix, int(mod)) for mod in list_modules]
-
+print(list_modules)
 # retrieving root files 
 inputFiles = glob.glob(data_path+'/run*/*_analysis.root')
 for inputFile in inputFiles:
@@ -105,14 +121,19 @@ for inputFile in inputFiles:
             module = token[7:21] # SM ID
         if 'run' in token:
             run = int(token[3:]) # run number
+    '''
     # saving in the dict only selected runs and modules
     if str(run) in list_runs and str(module) in list_modules:
         if run == 56 and '32110020000030' in module:
             continue
         print("run ", run, "  module ", module)
-        modules.append(module)
+        #modules.append(module)
         params[module] = [inputFile,run,'GOOD']
+    '''
+    params[module] = [inputFile,run,'GOOD']
 
+    modules.append(module)
+print(modules)
 if not os.path.isdir(plotDir):
     os.mkdir(plotDir)
 
@@ -136,9 +157,14 @@ h_LOrms_ch = ROOT.TH1F('h_LOrms_ch','',60,0.,30.)
 h_LOmaxvar_bar = ROOT.TH1F('h_LOmaxvar_bar','',50,0.,100.)
 h_LOmaxvar_ch = ROOT.TH1F('h_LOmaxvar_ch','',50,0.,100.)
 
+modules_tested = ["32110020000016"]
 
 # selecting the modules to be included in the summary: accept 1 if included, 0 otherwise
 for module in modules:
+    print(module)
+    if module in modules_tested:
+        continue
+    modules_tested.append(module)
     param = params[module]
     # accept = 1
     # if param[1] < 50: # measurements re-done after changing module boards
@@ -257,6 +283,7 @@ h_spe_L_ch.SetFillStyle(3001)
 h_spe_L_ch.SetFillColor(ROOT.kRed)
 h_spe_L_ch.SetLineColor(ROOT.kRed)
 h_spe_L_ch.GetYaxis().SetRangeUser(0.5,1.1*max(h_spe_L_ch.GetMaximum(),h_spe_R_ch.GetMaximum()))
+h_spe_L_ch.GetXaxis().SetRangeUser(2, 4.2)
 h_spe_L_ch.Draw()
 latex_L = ROOT.TLatex(0.64,0.70,'#splitline{mean: %.2e}{RMS: %.1f %%}'%(h_spe_L_ch.GetMean(),h_spe_L_ch.GetRMS()/h_spe_L_ch.GetMean()*100.))
 latex_L.SetNDC()
@@ -265,6 +292,7 @@ latex_L.SetTextColor(ROOT.kRed)
 latex_L.Draw('same')
 h_spe_R_ch.SetFillStyle(3001)
 h_spe_R_ch.SetFillColor(ROOT.kBlue)
+h_spe_R_ch.GetXaxis().SetRangeUser(2.8, 4.2)
 h_spe_R_ch.SetLineColor(ROOT.kBlue)
 h_spe_R_ch.Draw('same')
 latex_R = ROOT.TLatex(0.64,0.40,'#splitline{mean: %.2e}{RMS: %.1f %%}'%(h_spe_R_ch.GetMean(),h_spe_R_ch.GetRMS()/h_spe_R_ch.GetMean()*100.))

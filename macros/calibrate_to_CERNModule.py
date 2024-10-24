@@ -14,9 +14,9 @@ import tdrstyle
 
 # paths
 CERN_module_file = '/home/cptlab/qaqc-gui_output/CERN_Module_CERN_Results/module_32110020000016_analysis.root'
-data_path = '/home/cptlab/qaqc-gui_output/modules_newRuns/calibrationData_CERNModule/12_Calibration_Runs/'
-calib_output_path = '/home/cptlab/qaqc-gui_output/CERN_Module_Calibration_Output/'
-plotDir = '/home/cptlab/qaqc-gui_output/CERN_Module_Calibration_Output'
+data_path = '/home/cptlab/qaqc-gui_output/CERN_Module_Calibrations_v2/'
+calib_output_path = '/home/cptlab/qaqc-gui_output/CERN_Module_Calibration_Output_v2_fixLeft/'
+plotDir = '/home/cptlab/qaqc-gui_output/CERN_Module_Calibration_Output_v2_fixLeft'
 
 if not os.path.isdir(plotDir):
     os.mkdir(plotDir)
@@ -43,6 +43,8 @@ graph_names = {
     'g_spe_vs_ch': "spe charge [a.u.]",
     'g_lyso_pc_per_kev_vs_ch': "lyso charge [a.u.]"}
 
+
+CERN_Module_Avg_src_left = 2.08 #we scale left side charge to the average of the CERN Module left side. This is because we observed that some of the channels may have a lower light output in the CERN test due to random variation, so this will correct the scale.
 
 modules = []
 params = {}
@@ -93,8 +95,13 @@ for module in modules:
     for g_name in graph_names:
         channels = graphs[g_name][slot].GetN()
         for ch in range(channels):
-            ratio = calib_graphs[g_name].GetY()[ch] / graphs[g_name][slot].GetY()[ch]
-            graphs_ratio[g_name][slot].SetPoint(graphs_ratio[g_name][slot].GetN(), ch, ratio)
+            if ch<16 and g_name=='g_lyso_pc_per_kev_vs_ch':
+                ratio = 2.08 / graphs[g_name][slot].GetY()[ch]
+                graphs_ratio[g_name][slot].SetPoint(graphs_ratio[g_name][slot].GetN(), ch, ratio)
+            
+            else:
+                ratio = calib_graphs[g_name].GetY()[ch] / graphs[g_name][slot].GetY()[ch]
+                graphs_ratio[g_name][slot].SetPoint(graphs_ratio[g_name][slot].GetN(), ch, ratio)
                 
     # draw
     for g_name in graph_names:

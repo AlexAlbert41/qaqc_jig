@@ -667,20 +667,25 @@ def poll_single_module(client, module):
            thermistor_value = 0.
            for it in range(10):
               thermistor_value += calib * query(client, "thermistor_read %i %i" % (bus, thermistor))
+              print("Thermistor value: ", it, thermistor_value)
            if DEBUG:
                 thermistor_value = random.uniform(20,30)
         except Exception as e:
+            print("Returning Bad value on RTD check")
             print_warning(str(e))
             return
 
+        tec_value = -999
         try:
             # TECs are numbered backwards from thermistors
             tec_value = query(client, "tec_check %i %i" % (bus, 2-thermistor))
+            print("Tec value: ", it, tec_value)
             if DEBUG:
                 tec_value = random.uniform(7,10)
         except Exception as e:
             print_warning(str(e))
-            return
+            print_warning("Returning Bad value on tec check")
+            # return
          
         values['temp%s' % key] = thermistor_value/10.
         values['tec%s' % key] = tec_value
