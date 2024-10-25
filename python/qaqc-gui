@@ -618,7 +618,7 @@ def take_data():
       entry.update()
       
       out_filename = "%s_analysis.root" % root
-      cmd = [ANALYZE_WAVEFORMS_PROGRAM,'-o',out_filename,'--slot',i,'--sourceType','cesium','--print-pdfs','./',filename]
+      cmd = [ANALYZE_WAVEFORMS_PROGRAM,'-o',out_filename,'--slot',i,'--sourceType','cesium','--print-pdfs',run_path,filename]
       
       if run_command(cmd,progress_bar=i):
          module_status[i].config(text="Failed analysis")

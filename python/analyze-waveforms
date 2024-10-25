@@ -59,7 +59,7 @@ if __name__ == '__main__':
     parser.add_argument('-s', '--slot', type=int, default=-1, help='which slot was the module in')
     args = parser.parse_args()
 
-    
+    calib_first_tray = ROOT.TFile("/data/QAQC_SM/qaqc-gui_output/Calibration_Facors/calib_first_tray.root")    
     #calib_file = ROOT.TFile("/home/cmsdaq/DAQ/qaqc_calibration/master_calib.root", "READ")
     #calib_file_CERN_Module = ROOT.TFile("/home/cptlab/AlexAlbert41/qaqc_jig/calib_files/CERN_Module_calib.root", "READ")
     gMasterCalib_spe = None
@@ -70,9 +70,9 @@ if __name__ == '__main__':
         gMasterCalib_spe = calib_file.Get("g_spe_slot%d"%args.slot)
         gMasterCalib_lyso = calib_file.Get("g_lyso_slot%d"%args.slot)
     '''
-    #if args.slot >= 0:
-    #    gMasterCalib_spe = calib_file_CERN_Module.Get("g_spe_vs_ch_slot%d"%args.slot)
-    #    gMasterCalib_lyso = calib_file_CERN_Module.Get("g_lyso_pc_per_kev_vs_ch_slot%d"%args.slot)
+    if args.slot >= 0:
+        gMasterCalib_spe = calib_first_tray.Get("g_spe_vs_ch_slot%d"%args.slot)
+        gMasterCalib_lyso = calib_first_tray.Get("g_lyso_pc_per_kev_vs_ch_slot%d"%args.slot)
     if not args.plot:
         # Disables the canvas from ever popping up
         gROOT.SetBatch()

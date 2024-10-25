@@ -16,10 +16,10 @@ import numpy as np
 #from typing import NamedTuple
 
 
-data_path = '/data/QAQC_SM/qaqc-gui_output/Summary_Plots_First37_NoCal/SM_QAQC_Production/'
+data_path = '/data/QAQC_SM/qaqc-gui_output/SM_results_after_calibrations/'
 selections = []
-plotDir = '/data/QAQC_SM/qaqc-gui_output/Summary_Plots_NewDirectory_NoCal_AddedPlots/'
-
+plotDir = '/data/QAQC_SM/qaqc-gui_output/SummaryPlots_Calibrations_first165/'
+gui_settings_path = '/data/QAQC_SM/qaqc-gui_output/SM_QAQC_Production/'
 
 #set the tdr style
 tdrstyle.setTDRStyle()
@@ -60,20 +60,25 @@ modules = []
 params = {}
 
 # retrieving root files 
-inputFiles = glob.glob(data_path+'/run*/*_analysis.root')
-gui_settings_files = glob.glob(data_path+'/run*/qaqc_gui.settings')
-print(inputFiles)
+#inputFiles = glob.glob(data_path+'/run*/*_analysis.root')
+#gui_settings_files = glob.glob(data_path+'/run*/qaqc_gui.settings')
+inputFiles = glob.glob(data_path+'/*_analysis_calib.root')
+gui_settings_files = glob.glob(gui_settings_path+'/run*/qaqc_gui.settings')
+
+#print(gui_settings_files)
 for inputFile in inputFiles:
     tokens = inputFile.split('/')
     run = ''
     for token in tokens:
-        if 'module' in token:
-            module = token[7:21] # SM ID
+        #if 'module' in token:
+        #    module = token[7:21] # SM ID
+        if 'module' in token: # different parsing for calibrated modules
+            module = token[6:20] # SM ID
         if 'run' in token:
             run = int(token[3:]) # run number
     modules.append(module)
     params[module] = [inputFile,run,'GOOD']
-#print(modules)
+print(modules)
 
 if not os.path.isdir(plotDir):
     os.mkdir(plotDir)
@@ -142,9 +147,10 @@ for num, module in enumerate(modules):
     modules_tested.append(module)
     param = params[module]
     accept = 1
-    #if "32110020008456" in module:
-    #    print("skipping module")
-    #    continue
+    #if "32110020008559" in module or "32110020008437" in module:
+    if module in ["32110020008559", "32110020008437", "32110020008526"]:
+        print("skipping module ", module)
+        continue
     '''
     if param[1] < 50: # measurements re-done after changing module boards
         accept = 0 
@@ -160,7 +166,7 @@ for num, module in enumerate(modules):
             #print("barcodes: ", data["barcodes"])
             if module in data["barcodes"]:
                 slot=np.where(np.array(data["barcodes"])==module)[0][0]
-                print("slot: ", slot)
+                #print("slot: ", slot)
     #for selection in selections:
     #    tempAccept = 0
     #    for param in params:
@@ -238,6 +244,8 @@ for num, module in enumerate(modules):
 
 
     graph = rootfile.Get('g_avg_light_yield_vs_bar')
+    if GetMeanRMS(graph)[0]>4000:
+        print("module with high LO: ", GetMeanRMS(graph)[0])
     h_LO_avg_bar.Fill(GetMeanRMS(graph)[0])
     h_LOrms_bar.Fill(GetMeanRMS(graph)[1]/GetMeanRMS(graph)[0]*100.)
     h_LOmaxvar_bar.Fill(GetMaxVar(graph)/GetMeanRMS(graph)[0]*100.)
@@ -251,6 +259,8 @@ for num, module in enumerate(modules):
     graph = rootfile.Get('g_light_yield_asymm_vs_bar')
     h_LO_asymm_bar.Fill(GetMeanRMS_abs(graph)[0])
     for point in range(graph.GetN()):
+        if graph.GetPointY(point)>1:
+            print("asymm issue with module: ", module)
         h_LO_asymm_ch.Fill(graph.GetPointY(point))
         g_spe_vs_asymm_ch_L.SetPointY(num*16+point, graph.GetPointY(point))
         g_spe_vs_asymm_ch_R.SetPointY(num*16+point, graph.GetPointY(point))

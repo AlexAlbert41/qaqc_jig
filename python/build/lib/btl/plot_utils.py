@@ -106,6 +106,8 @@ def plot_hist(h, path=None, filename=None, logy=False):
     # will always make a default canvas with name `c1` the first time you
     # fit a histogram. The only way I know how to get rid of it is to
     # overwrite it like this.
+    print(path)
+    print(filename)
     c = ROOT.TCanvas('c1_%s'%h.GetName(),'',700,600)
     h.Draw()
     ROOT.gPad.SetGridx()
@@ -116,19 +118,19 @@ def plot_hist(h, path=None, filename=None, logy=False):
         print('No path / filename specified; can not print pdf!')
     else:
         # simona
-        # dir_path = os.path.dirname(f"{path}/{filename}")
-        # if not os.path.exists(dir_path):
-        #     print(f"Creating directory {dir_path}")
-        #     os.makedirs(dir_path)
-        root, ext = os.path.splitext(filename)
-        #if not os.path.isdir("%s/%s"%(path,root)):
-        #    os.makedirs("%s/%s"%(path,root))
+        root, ext = os.path.splitext(filename[filename.rfind('/')+1:])
+        dir_path = os.path.dirname(f"{path}/{root}")
+        if not os.path.exists(dir_path):
+            print(f"Creating directory {dir_path}")
+            os.makedirs(dir_path)
+        if not os.path.isdir("%s/%s"%(path,root)):
+            os.makedirs("%s/%s"%(path,root))
         if not os.path.isdir("%s"%(root)):
             os.mkdir("%s"%(root))
         
         #print('Printing plots to file: %s %s' % (path, root))
-        c.Print("%s/%s.pdf" % (root, h.GetName()))
-        c.Print("%s/%s.png" % (root, h.GetName()))
+        c.Print("%s/%s/%s.pdf" % (path, root, h.GetName()))
+        c.Print("%s/%s/%s.png" % (path, root, h.GetName()))
 
 
 def plot_graph(g, path=None, filename=None, xMin=-1., xMax=32., yMin=-1., yMax=-1.):
@@ -173,16 +175,22 @@ def plot_graph(g, path=None, filename=None, xMin=-1., xMax=32., yMin=-1., yMax=-
     ROOT.gPad.SetGridy()
     c.Update()
     if not path or not filename:
-            print('No path / filename specified; can not print pdf!')
+        print('No path / filename specified; can not print pdf!')
     else:
-        root, ext = os.path.splitext(filename)
-        #if not os.path.isdir("%s/%s"%(path,root)):
-        #    os.mkdir("%s/%s"%(path,root))
+        # simona
+        root, ext = os.path.splitext(filename[filename.rfind('/')+1:])
+        dir_path = os.path.dirname(f"{path}/{root}")
+        if not os.path.exists(dir_path):
+            print(f"Creating directory {dir_path}")
+            os.makedirs(dir_path)
+        if not os.path.isdir("%s/%s"%(path,root)):
+            os.makedirs("%s/%s"%(path,root))
         if not os.path.isdir("%s"%(root)):
             os.mkdir("%s"%(root))
-        c.Print("%s/%s.pdf" % (root, g.GetName()))
-        c.Print("%s/%s.png" % (root, g.GetName()))
-
+        
+        #print('Printing plots to file: %s %s' % (path, root))
+        c.Print("%s/%s/%s.pdf" % (path, root, g.GetName()))
+        c.Print("%s/%s/%s.png" % (path, root, g.GetName()))
 
 def plot_graph_bars(g_L, g_R, g_A, path=None, filename=None, graphname='graph', yMin=-1, yMax=-1):
     # Naming canvases this way will produce a runtime warning because ROOT
@@ -254,14 +262,17 @@ def plot_graph_bars(g_L, g_R, g_A, path=None, filename=None, graphname='graph', 
     if not path or not filename:
         print('No path / filename specified; can not print pdf!')
     else:
-        root, ext = os.path.splitext(filename)
-        print("root: ", root)
-        print("path: ", path)
-        #if not os.path.isdir("%s/%s"%(path,root)):
-        #    os.mkdir("%s/%s"%(path,root))
+        # simona
+        root, ext = os.path.splitext(filename[filename.rfind('/')+1:])
+        dir_path = os.path.dirname(f"{path}/{root}")
+        if not os.path.exists(dir_path):
+            print(f"Creating directory {dir_path}")
+            os.makedirs(dir_path)
+        if not os.path.isdir("%s/%s"%(path,root)):
+            os.makedirs("%s/%s"%(path,root))
         if not os.path.isdir("%s"%(root)):
             os.mkdir("%s"%(root))
-        #c.Print("%s/%s/%s.pdf" % (path, root, graphname))
-        #c.Print("%s/%s/%s.png" % (path, root, graphname))
-        c.Print("%s/%s.pdf" % (root, graphname))
-        c.Print("%s/%s.png" % (root, graphname))
+        
+        #print('Printing plots to file: %s %s' % (path, root))
+        c.Print("%s/%s/%s.pdf" % (path, root, graphname))
+        c.Print("%s/%s/%s.png" % (path, root, graphname))
