@@ -57,9 +57,11 @@ if __name__ == '__main__':
     parser.add_argument('--channel-mask', type=lambda x: int(x,0), default=0xffffffff, help='channel mask')
     parser.add_argument('-g', '--group', type=str, default=None, help='which group to analyze')
     parser.add_argument('-s', '--slot', type=int, default=-1, help='which slot was the module in')
+    parser.add_argument('-c', '--calibration', type=str, default=None, help='which calibrations to apply (default none) - channel+scale (called both) or just channel')
     args = parser.parse_args()
 
-    calib_first_tray = ROOT.TFile("/data/QAQC_SM/qaqc-gui_output/Calibration_Facors/calib_first_tray.root")    
+    calib_channels = ROOT.TFile("/data/QAQC_SM/qaqc-gui_output/calibs/calib_channels.root")    
+    calib_both = ROOT.TFile("/data/QAQC_SM/qaqc-gui_output/calibs/master_calib.root")    
     #calib_file = ROOT.TFile("/home/cmsdaq/DAQ/qaqc_calibration/master_calib.root", "READ")
     #calib_file_CERN_Module = ROOT.TFile("/home/cptlab/AlexAlbert41/qaqc_jig/calib_files/CERN_Module_calib.root", "READ")
     gMasterCalib_spe = None
@@ -70,9 +72,14 @@ if __name__ == '__main__':
         gMasterCalib_spe = calib_file.Get("g_spe_slot%d"%args.slot)
         gMasterCalib_lyso = calib_file.Get("g_lyso_slot%d"%args.slot)
     '''
-    if args.slot >= 0:
-        gMasterCalib_spe = calib_first_tray.Get("g_spe_vs_ch_slot%d"%args.slot)
-        gMasterCalib_lyso = calib_first_tray.Get("g_lyso_pc_per_kev_vs_ch_slot%d"%args.slot)
+    if args.calibration=="both":
+        if args.slot >= 0:
+            gMasterCalib_spe = calib_both.Get("g_spe_slot%d"%args.slot)
+            gMasterCalib_lyso = calib_both.Get("g_lyso_slot%d"%args.slot)
+    if args.calibration=="channel":
+        if args.slot >= 0:
+            gMasterCalib_spe = calib_channels.Get("g_spe_slot%d"%args.slot)
+            gMasterCalib_lyso = calib_channels.Get("g_lyso_slot%d"%args.slot)
     if not args.plot:
         # Disables the canvas from ever popping up
         gROOT.SetBatch()
@@ -231,7 +238,7 @@ if __name__ == '__main__':
                 
                 ch_data['bar%d'%ch] = new_item
                 #plot_utils.plot_hist(hsource_raw, path=args.print_pdfs, filename=args.filename)        
-                plot_utils.plot_hist(hsource, path=args.print_pdfs, filename=args.filename)
+                plot_utils.plot_hist(hsource, path=args.print_pdfs, filename=args.output.replace("analysis", "integrals"))
 
         
         ########################
@@ -307,7 +314,7 @@ if __name__ == '__main__':
                     ch_data[channel]['spe_fit_pars'] = None
                     ch_data[channel]['spe_fit_par_errors'] = None
                     ch_data[channel]['spe'] = None
-                plot_utils.plot_hist(hspe, path=args.print_pdfs, filename=args.filename, logy=True)
+                plot_utils.plot_hist(hspe, path=args.print_pdfs, filename=args.output.replace("analysis", "integrals"), logy=True)
                 hspe.Write()
                 
             # Fitting Histograms
@@ -365,7 +372,7 @@ if __name__ == '__main__':
                     ch_data[channel][f'lyso_fit_pars'] = None
                     ch_data[channel][f'lyso_fit_par_errors'] = None
                     ch_data[channel]['pc_per_kev'] = None                    
-                plot_utils.plot_hist(hsource, path=args.print_pdfs, filename=args.filename)
+                plot_utils.plot_hist(hsource, path=args.print_pdfs, filename=args.output.replace("analysis", "integrals"))
 
 
             ###################
@@ -587,22 +594,22 @@ if __name__ == '__main__':
     g_lyso_pc_per_kev_raw_vs_ch.SetTitle(f"LYSO Fit Results; Channel; Raw Integrated Charge (pC/keV)")
     g_lyso_pc_per_kev_raw_vs_ch.SetName("g_lyso_pc_per_kev_raw_vs_ch")
     g_lyso_pc_per_kev_raw_vs_ch.Write()
-    plot_utils.plot_graph(g_lyso_pc_per_kev_raw_vs_ch, path=args.print_pdfs, filename=args.filename, yMin=0., yMax=4.)
+    plot_utils.plot_graph(g_lyso_pc_per_kev_raw_vs_ch, path=args.print_pdfs, filename=args.output.replace("analysis", "integrals"), yMin=0., yMax=4.)
     
     g_lyso_pc_per_kev_vs_ch.SetTitle(f"LYSO Fit Results; Channel; Raw Integrated Charge (pC/keV)")
     g_lyso_pc_per_kev_vs_ch.SetName("g_lyso_pc_per_kev_vs_ch")
     g_lyso_pc_per_kev_vs_ch.Write()
-    plot_utils.plot_graph(g_lyso_pc_per_kev_vs_ch, path=args.print_pdfs, filename=args.filename, yMin=0., yMax=3.)
+    plot_utils.plot_graph(g_lyso_pc_per_kev_vs_ch, path=args.print_pdfs, filename=args.output.replace("analysis", "integrals"), yMin=0., yMax=3.)
         
     g_spe_vs_ch.SetTitle("SPE Fit Results; Channel; SPE Charge (pC)")
     g_spe_vs_ch.SetName("g_spe_vs_ch")
     g_spe_vs_ch.Write()
-    plot_utils.plot_graph(g_spe_vs_ch, path=args.print_pdfs, filename=args.filename, yMin=0., yMax=8.)
+    plot_utils.plot_graph(g_spe_vs_ch, path=args.print_pdfs, filename=args.output.replace("analysis", "integrals"), yMin=0., yMax=8.)
     
     g_light_yield_vs_ch.SetTitle("Light Yield; Channel; Light Yield (p.e./MeV)")
     g_light_yield_vs_ch.SetName("g_light_yield_vs_ch")
     g_light_yield_vs_ch.Write()
-    plot_utils.plot_graph(g_light_yield_vs_ch, path=args.print_pdfs, filename=args.filename, yMin=0., yMax=6000.)
+    plot_utils.plot_graph(g_light_yield_vs_ch, path=args.print_pdfs, filename=args.output.replace("analysis", "integrals"), yMin=0., yMax=6000.)
     
     
     #plots vs bar
@@ -612,7 +619,7 @@ if __name__ == '__main__':
     g_R_lyso_pc_per_kev_raw_vs_bar.SetTitle(f"LYSO Fit Results; Bar ID; Integrated charge (pC/keV)")
     g_R_lyso_pc_per_kev_raw_vs_bar.SetName("g_lyso_R_pc_per_kev_raw_vs_bar")
     g_R_lyso_pc_per_kev_raw_vs_bar.Write()    
-    plot_utils.plot_graph_bars(g_L_lyso_pc_per_kev_raw_vs_bar, g_R_lyso_pc_per_kev_raw_vs_bar, g_avg_lyso_pc_per_kev_raw_vs_bar, path=args.print_pdfs, filename=args.filename, graphname='g_lyso_pc_per_kev_raw_vs_bar', yMin=0., yMax=4.)
+    plot_utils.plot_graph_bars(g_L_lyso_pc_per_kev_raw_vs_bar, g_R_lyso_pc_per_kev_raw_vs_bar, g_avg_lyso_pc_per_kev_raw_vs_bar, path=args.print_pdfs, filename=args.output.replace("analysis", "integrals"), graphname='g_lyso_pc_per_kev_raw_vs_bar', yMin=0., yMax=4.)
     
     g_L_lyso_pc_per_kev_vs_bar.SetTitle(f"LYSO Fit Results; Bar ID; Integrated charge (pC/keV)")
     g_L_lyso_pc_per_kev_vs_bar.SetName("g_lyso_L_pc_per_kev_vs_bar")

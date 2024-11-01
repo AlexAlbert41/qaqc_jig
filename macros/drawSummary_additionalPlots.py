@@ -16,7 +16,7 @@ import numpy as np
 #from typing import NamedTuple
 
 
-data_path = '/data/QAQC_SM/qaqc-gui_output/SM_results_after_calibrations/'
+data_path = '/data/QAQC_SM/qaqc-gui_output/SM_results_after_calibrations_scale_and_channel/'
 selections = []
 plotDir = '/data/QAQC_SM/qaqc-gui_output/SummaryPlots_Calibrations_first165/'
 gui_settings_path = '/data/QAQC_SM/qaqc-gui_output/SM_QAQC_Production/'
@@ -62,7 +62,7 @@ params = {}
 # retrieving root files 
 #inputFiles = glob.glob(data_path+'/run*/*_analysis.root')
 #gui_settings_files = glob.glob(data_path+'/run*/qaqc_gui.settings')
-inputFiles = glob.glob(data_path+'/*_analysis_calib.root')
+inputFiles = glob.glob(data_path+'/*_analysis__both_calibs.root')
 gui_settings_files = glob.glob(gui_settings_path+'/run*/qaqc_gui.settings')
 
 #print(gui_settings_files)
@@ -139,12 +139,12 @@ slot_data_src_L_err = {}
 slot_data_src_R_err = {}
 slot_data_LO_err = {}
 
-modules_tested = ["32110020000016"]
+modules_tested = [32110020000016]
 for num, module in enumerate(modules):
     print("Module: ", module)
-    if module in modules_tested:
+    if int(module) in modules_tested or int(module)>32110020008565:
         continue
-    modules_tested.append(module)
+    modules_tested.append(int(module))
     param = params[module]
     accept = 1
     #if "32110020008559" in module or "32110020008437" in module:
@@ -687,3 +687,5 @@ g_slot_vs_src_R.Draw("p same")
 c.Print('%s/g_slot_vs_src.png'%plotDir)
 
 print(f"{len(modules_tested)} modules tested")
+modules_tested.sort()
+print(modules_tested)

@@ -623,7 +623,12 @@ def take_data():
       if run_command(cmd,progress_bar=i):
          module_status[i].config(text="Failed analysis")
          continue
+      out_filename = out_filename.replace(".root", "_both_calibs.root")
+      cmd = [ANALYZE_WAVEFORMS_PROGRAM,'-o',out_filename,'--slot',i,'--sourceType','cesium','--calibration', 'both', '--print-pdfs',run_path,filename]
       
+      if run_command(cmd,progress_bar=i):
+         module_status[i].config(text="Failed analysis")
+         continue
       module_status[i].config(text="Analysis successful!")
 
    # Send the stepper back to the home position that takes a while

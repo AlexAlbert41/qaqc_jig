@@ -14,3 +14,6 @@
 __pycache__
 __init__
 *.hdf5
+.step_lastposition
+.last_run
+python/build/*

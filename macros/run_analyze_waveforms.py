@@ -18,7 +18,7 @@ import numpy as np
 data_path = '/home/cptlab/mnt/btl-upload/upload/QAQC_SM/qaqc-gui_output/SM_QAQC_Production/'
 data_path_2 = '/home/cptlab/mnt/btl-upload/upload/from_cptlab_100724/qaqc-gui_output/SM_QAQC_Production/'
 selections = []
-plotDir = '/data/QAQC_SM/qaqc-gui_output/SM_results_after_calibrations/'
+plotDir = '/data/QAQC_SM/qaqc-gui_output/SM_results_after_calibrations_scale_and_channel/'
 
 
 #set the tdr style
@@ -103,6 +103,6 @@ for num, module in enumerate(modules):
     #{plotDir}    accept *= tempAccept
     if accept == 0:
         continue
-    out_file = f"{plotDir}/module{module}_analysis_calib.root"
+    out_file = f"{plotDir}/module{module}_analysis__both_calibs.root"
     #print(f"~/AlexAlbert41/qaqc_jig/python/analyze-waveforms {params[module][0]} -o {out_file} --sourceType cesium --print-pdfs {plotDir}")
     os.system(f"analyze-waveforms {params[module][0]} -o {out_file} --slot {slot} --sourceType cesium --print-pdfs {plotDir}")

@@ -12,15 +12,17 @@ import json
 import ROOT
 import tdrstyle
 
+import numpy as np
+
 from typing import NamedTuple
 
 
 
 
-data_path = '/data1/SMQAQC/PRODUCTION/'
-selections = ['GOOD']
-plotDir = '/data1/html/data1/SMQAQC/PRODUCTION/calibrationPlots_run0050-run0056_calib/'
-#plotDir = '/data1/html/data1/SMQAQC/PRODUCTION/calibrationPlots_run0057-run0062/'
+data_path = '/data/QAQC_SM/qaqc-gui_output/SM_results_after_calibrations/'
+selections = []
+plotDir = '/data/QAQC_SM/qaqc-gui_output/scale_calibration_plots/'                                                                                                                                  
+gui_settings_path = '/data/QAQC_SM/qaqc-gui_output/SM_QAQC_Production/'
 
 if not os.path.isdir(plotDir):
     os.mkdir(plotDir)
@@ -46,31 +48,31 @@ def GetMeanRMS(graph):
 
 
 
-
 modules = []
 params = {}
-inputFiles = glob.glob(data_path+'/run*/*_analysis.root')
+inputFiles = glob.glob(data_path+'/*_analysis_calib.root')
+gui_settings_files = glob.glob(gui_settings_path+'/run*/qaqc_gui.settings') 
+#print(gui_settings_files)
 for inputFile in inputFiles:
-    tokens = inputFile.split('/')
-    run = ''
-    for token in tokens:
-        if 'module' in token:
-            module = token[7:21]
-        if 'run' in token:
-            run = int(token[3:])
-    jsonFileName = data_path+'run%04d/qaqc_gui.settings'%run
-    config = json.load(open(jsonFileName))
-    slot = 0
-    for barcode in config['barcodes']:
-        if barcode == module and config['module_available'][slot] == 1:
-            break
-        else:
-            slot += 1
-    modules.append((module,run))
-    params[(module,run)] = [inputFile,slot,'GOOD']
-    #print(module,run,params[(module,run)],config)
+     tokens = inputFile.split('/')
+     run = ''
+     for token in tokens:
+         #if 'module' in token:
+         #    module = token[7:21] # SM ID
+         if 'module' in token: # different parsing for calibrated modules
+             module = token[6:20] # SM ID
+         if 'run' in token:
+             run = int(token[3:]) # run number
+     modules.append(module)
+     params[module] = [inputFile,run,'GOOD']
+print(modules)
+ 
+if not os.path.isdir(plotDir):
+     os.mkdir(plotDir)
 
-bad_modules = []
+
+bad_modules = ["32110020008559", "32110020008437", "32110020008526"]
+'''
 bad_modules.append('32110020000004')
 bad_modules.append('32110020000005')
 bad_modules.append('32110020000009')
@@ -83,32 +85,44 @@ bad_modules.append('32110020000034')
 bad_modules.append('32110020000035')
 bad_modules.append('32110020000037')
 bad_modules.append('32110020000040')
+'''
 
 
 
-
-p_spe_L_vs_slot = ROOT.TProfile('p_spe_L_vs_slot','',6,-0.5,5.5)
-p_spe_R_vs_slot = ROOT.TProfile('p_spe_R_vs_slot','',6,-0.5,5.5)
+p_spe_L_vs_slot = ROOT.TProfile('p_spe_L_vs_slot','',12,-0.5,11.5)
+p_spe_R_vs_slot = ROOT.TProfile('p_spe_R_vs_slot','',12,-0.5,11.5)
 p_spe_vs_ampli = ROOT.TProfile('p_spe_vs_ampli','',16,-0.5,15.5)
 
-p_lyso_L_vs_slot = ROOT.TProfile('p_lyso_L_vs_slot','',6,-0.5,5.5)
-p_lyso_R_vs_slot = ROOT.TProfile('p_lyso_R_vs_slot','',6,-0.5,5.5)
-p_lyso_vs_ampli = ROOT.TProfile('p_lyso_vs_ampli','',16,-0.5,15.5)
+p_lyso_L_vs_slot = ROOT.TProfile('p_lyso_L_vs_slot','',12,-0.5,11.5)
+p_lyso_R_vs_slot = ROOT.TProfile('p_lyso_R_vs_slot','',12,-0.5,11.5)
+p_lyso_vs_ampli = ROOT.TProfile('p_lyso_vs_ampli','',11,-0.5,15.5)
 
 
 print('***** spe *****')
 for key in modules:
-    module = key[0]
+    module = key
+    #print(module)
     run = key[1]
     param = params[key]
-    slot = param[1]
+    #slot = param[1]
+    slot=-1
+    for infile in gui_settings_files:
+        with open(infile) as myfile:
+            data = json.load(myfile)
+            #print("barcodes: ", data["barcodes"])
+            if module in data["barcodes"]:
+                slot=np.where(np.array(data["barcodes"])==module)[0][0]
+
     accept = 1
+    if module in bad_modules:
+        accept = 0
     #for selection in selections:
     #    tempAccept = 0
     #    for param in params[module]:
     #        if selection in param:
     #            tempAccept = 1
     #    accept *= tempAccept
+    '''
     if run < 50 or run > 56:
         accept = 0
     #if run < 57:
@@ -116,15 +130,22 @@ for key in modules:
     if accept == 0:
         continue
     print(module,run,param)
-    
-    rootfile = ROOT.TFile(params[(module,run)][0],'READ')
+    '''
+    print(params)
+    rootfile = ROOT.TFile(params[module][0],'READ')
     
     graph = rootfile.Get('g_spe_L_vs_bar')
     mean = GetMeanRMS(graph)[0]
+    if mean<2.8 or mean>4:
+        print("Weird Left SPE charge - skipping left side ", module)
+        continue
     p_spe_L_vs_slot.Fill(slot,mean)
     
     graph = rootfile.Get('g_spe_R_vs_bar')
     mean = GetMeanRMS(graph)[0]
+    if mean<2.8 or mean>4:
+        print("Weird Right SPE charge - skipping right side of module ", module)
+        continue
     p_spe_R_vs_slot.Fill(slot,mean)
     
     graph = rootfile.Get('g_spe_vs_ch')
@@ -139,7 +160,7 @@ for key in modules:
 
 print('***** lyso *****')
 for key in modules:
-    module = key[0]
+    module = key
     run = key[1]
     param = params[key]
     slot = param[1]
@@ -150,24 +171,39 @@ for key in modules:
     #        if selection in param:
     #            tempAccept = 1
     #    accept *= tempAccept
+    slot=-1
+    for infile in gui_settings_files:
+        with open(infile) as myfile:
+            data = json.load(myfile)
+            #print("barcodes: ", data["barcodes"])
+            if module in data["barcodes"]:
+                slot=np.where(np.array(data["barcodes"])==module)[0][0]
     if module in bad_modules:
         accept = 0
+    '''
     if run < 50 or run > 56:
         accept = 0
     #if run < 57:
     #    accept = 0
     if accept == 0:
         continue
-    print(module,run,param)
+    '''
+    #print(module,run,param)
     
-    rootfile = ROOT.TFile(params[(module,run)][0],'READ')
+    rootfile = ROOT.TFile(params[module][0],'READ')
     
     graph = rootfile.Get('g_lyso_L_pc_per_kev_vs_bar')
     mean = GetMeanRMS(graph)[0]
+    if mean<1.5 or mean>2.5:
+        print("Weird Left LYSO charge - skipping module ", module)
+        continue
     p_lyso_L_vs_slot.Fill(slot,mean)
     
     graph = rootfile.Get('g_lyso_R_pc_per_kev_vs_bar')
     mean = GetMeanRMS(graph)[0]
+    if mean<1.5 or mean>2.5:
+        print("Weird Right LYSO charge - skipping right side of module ", module)
+        continue
     p_lyso_R_vs_slot.Fill(slot,mean)
     
     graph = rootfile.Get('g_lyso_pc_per_kev_vs_ch')
@@ -185,8 +221,9 @@ for key in modules:
 c = ROOT.TCanvas('c_spe_vs_slot','',800,700)
 ROOT.gPad.SetGridx()
 ROOT.gPad.SetGridy()
-p_spe_L_vs_slot.Scale(1./p_spe_L_vs_slot.GetBinContent(p_spe_L_vs_slot.FindBin(2.)))
-p_spe_R_vs_slot.Scale(1./p_spe_R_vs_slot.GetBinContent(p_spe_R_vs_slot.FindBin(2.)))
+scaling_slots_both_sides = (p_spe_L_vs_slot.GetBinContent(p_spe_L_vs_slot.FindBin(2.))+p_spe_R_vs_slot.GetBinContent(p_spe_R_vs_slot.FindBin(2.)))/2
+p_spe_L_vs_slot.Scale(1./scaling_slots_both_sides)
+p_spe_R_vs_slot.Scale(1./scaling_slots_both_sides)
 p_spe_L_vs_slot.SetTitle(';slot;spe charge [a.u.]')
 p_spe_L_vs_slot.GetYaxis().SetRangeUser(0.95,1.05)
 p_spe_L_vs_slot.SetMarkerStyle(20)
@@ -216,8 +253,10 @@ c.Print('%s/h_spe_LR_ch.png'%plotDir)
 c = ROOT.TCanvas('c_lyso_vs_slot','',800,700)
 ROOT.gPad.SetGridx()
 ROOT.gPad.SetGridy()
-p_lyso_L_vs_slot.Scale(1./p_lyso_L_vs_slot.GetBinContent(p_lyso_L_vs_slot.FindBin(2.)))
-p_lyso_R_vs_slot.Scale(1./p_lyso_R_vs_slot.GetBinContent(p_lyso_R_vs_slot.FindBin(2.)))
+#added by Alex
+scaling_slots_both_sides = (p_lyso_L_vs_slot.GetBinContent(p_lyso_L_vs_slot.FindBin(2.))+p_lyso_R_vs_slot.GetBinContent(p_lyso_R_vs_slot.FindBin(2.)))/2
+p_lyso_L_vs_slot.Scale(1./scaling_slots_both_sides)
+p_lyso_R_vs_slot.Scale(1./scaling_slots_both_sides)
 p_lyso_L_vs_slot.SetTitle(';slot;lyso charge [a.u.]')
 p_lyso_L_vs_slot.GetYaxis().SetRangeUser(0.90,1.05)
 p_lyso_L_vs_slot.SetMarkerStyle(20)
