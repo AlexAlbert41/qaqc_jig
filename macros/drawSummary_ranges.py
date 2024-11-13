@@ -19,9 +19,9 @@ import tdrstyle
 #plotDir = '/data1/html/data1/SMQAQC/PRODUCTION/summaryPlots_SMID_42to152/'
 #plotDir = '/data1/html/data1/SMQAQC/PRODUCTION/summaryPlots_SMID_1to152/'
 
-data_path = '/data/QAQC_SM/qaqc-gui_output/Summary_Plots_First37_NoCal/SM_QAQC_Production/'
+data_path = '/data/QAQC_SM/qaqc-gui_output/SM_QAQC_Production/'
 selections = []
-plotDir = '/data/QAQC_SM/qaqc-gui_output/Summary_Plots_NewDirectory_NoCal_AddedPlots_Ranges/'
+plotDir = '/data/QAQC_SM/qaqc-gui_output/Summary_Plots_drawRanges_Calib/'
 
 
 #runs = ["63-66","85-88","90-93","95-101","104-104"] # 42-152
@@ -112,7 +112,10 @@ prefix = "32110020"
 list_modules = ["{}{:06d}".format(prefix, int(mod)) for mod in list_modules]
 print(list_modules)
 # retrieving root files 
-inputFiles = glob.glob(data_path+'/run*/*_analysis.root')
+inputFiles = glob.glob(data_path+'/run*/*_analysis_both_calibs.root')
+
+modules_to_skip = [32110020000016, 32110020008559]
+
 for inputFile in inputFiles:
     tokens = inputFile.split('/')
     run = ''
@@ -131,7 +134,8 @@ for inputFile in inputFiles:
         params[module] = [inputFile,run,'GOOD']
     '''
     params[module] = [inputFile,run,'GOOD']
-
+    if int(module) in modules_to_skip:
+        continue
     modules.append(module)
 print(modules)
 if not os.path.isdir(plotDir):

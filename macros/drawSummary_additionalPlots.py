@@ -16,9 +16,9 @@ import numpy as np
 #from typing import NamedTuple
 
 
-data_path = '/data/QAQC_SM/qaqc-gui_output/SM_results_after_calibrations_scale_and_channel/'
+data_path = '/data/QAQC_SM/qaqc-gui_output/SM_QAQC_Production/'
 selections = []
-plotDir = '/data/QAQC_SM/qaqc-gui_output/SummaryPlots_Calibrations_first165/'
+plotDir = '/data/QAQC_SM/qaqc-gui_output/SummaryPlots_Calibrations_testNewCategory_withRes_3/'
 gui_settings_path = '/data/QAQC_SM/qaqc-gui_output/SM_QAQC_Production/'
 
 #set the tdr style
@@ -29,6 +29,22 @@ ROOT.gStyle.SetTitleOffset(1.25,'Y')
 ROOT.gErrorIgnoreLevel = ROOT.kWarning;
 ROOT.gROOT.SetBatch(True)
 #ROOT.gROOT.SetBatch(False)
+
+MIN_SPE_ch = -1000 # modified by Alex
+MAX_SPE_ch = 1000
+MIN_LO_bar = 0.90 * 3150.
+MIN_LO_ch = 0.85 * 3150.
+MAX_LO_ASYMM_bar = 0.06
+MIN_LO_ASYMM_ch = -0.15
+MAX_LO_ASYMM_ch = 0.15
+
+MAX_BAR_RES = 0.04
+
+nCatA = 0
+nCatB = 0
+
+
+
 
 def GetMaxVar(graph):
     minVal = 999999.
@@ -60,10 +76,10 @@ modules = []
 params = {}
 
 # retrieving root files 
-#inputFiles = glob.glob(data_path+'/run*/*_analysis.root')
-#gui_settings_files = glob.glob(data_path+'/run*/qaqc_gui.settings')
-inputFiles = glob.glob(data_path+'/*_analysis__both_calibs.root')
-gui_settings_files = glob.glob(gui_settings_path+'/run*/qaqc_gui.settings')
+inputFiles = glob.glob(data_path+'/run*/*_analysis_both_calibs.root')
+gui_settings_files = glob.glob(data_path+'/run*/qaqc_gui.settings')
+#inputFiles = glob.glob(data_path+'/*_analysis__both_calibs.root')
+#gui_settings_files = glob.glob(gui_settings_path+'/run*/qaqc_gui.settings')
 
 #print(gui_settings_files)
 for inputFile in inputFiles:
@@ -73,7 +89,7 @@ for inputFile in inputFiles:
         #if 'module' in token:
         #    module = token[7:21] # SM ID
         if 'module' in token: # different parsing for calibrated modules
-            module = token[6:20] # SM ID
+            module = token[7:21] # SM ID
         if 'run' in token:
             run = int(token[3:]) # run number
     modules.append(module)
@@ -102,6 +118,10 @@ h_LOrms_ch = ROOT.TH1F('h_LOrms_ch','',60,0.,30.)
 
 h_LOmaxvar_bar = ROOT.TH1F('h_LOmaxvar_bar','',50,0.,100.)
 h_LOmaxvar_ch = ROOT.TH1F('h_LOmaxvar_ch','',50,0.,100.)
+
+h_LO_res_avg_bar = ROOT.TH1F('h_LO_res_avg_bar','',100,0,0.1)
+h_LO_res_bar = ROOT.TH1F('h_LO_res_bar','',100,0,0.1)
+
 
 #added graphs for additional analyses
 g_spe_vs_LO_ch_L = ROOT.TGraph()
@@ -140,17 +160,24 @@ slot_data_src_R_err = {}
 slot_data_LO_err = {}
 
 modules_tested = [32110020000016]
+modules_to_skip = ["32110020008559", "32110020008437", "32110020008526"]
+
+catAList = []
+catBList = []
+
 for num, module in enumerate(modules):
     print("Module: ", module)
-    if int(module) in modules_tested or int(module)>32110020008565:
+    if int(module) in modules_tested or module in modules_to_skip:
         continue
     modules_tested.append(int(module))
     param = params[module]
     accept = 1
     #if "32110020008559" in module or "32110020008437" in module:
-    if module in ["32110020008559", "32110020008437", "32110020008526"]:
+    '''
+    if module in modules_to_skip:
         print("skipping module ", module)
         continue
+    '''
     '''
     if param[1] < 50: # measurements re-done after changing module boards
         accept = 0 
@@ -191,6 +218,9 @@ for num, module in enumerate(modules):
     
     rootfile = ROOT.TFile(params[module][0],'READ')
     
+    isCatA = True
+    isCatB = False
+
     # filling histos
     graph = rootfile.Get('g_spe_L_vs_bar')
     c = ROOT.TCanvas('c', 'c', 800, 800)
@@ -201,6 +231,9 @@ for num, module in enumerate(modules):
         g_spe_vs_LO_ch_L.SetPointX(num*16+point, graph.GetPointY(point))
         g_spe_vs_asymm_ch_L.SetPointX(num*16+point, graph.GetPointY(point))
         g_spe_vs_src_ch_L.SetPointX(num*16+point, graph.GetPointY(point))
+        if graph.GetPointY(point) < MIN_SPE_ch or graph.GetPointY(point) > MAX_SPE_ch:
+             isCatB = True
+             isCatA = False
 
 
     graph = rootfile.Get('g_spe_R_vs_bar'); graph2 = rootfile.Get('g_spe_L_vs_bar')
@@ -210,6 +243,9 @@ for num, module in enumerate(modules):
         g_spe_vs_asymm_ch_R.SetPointX(num*16+point, graph.GetPointY(point))
         g_spe_vs_src_ch_R.SetPointX(num*16+point, graph.GetPointY(point))
         g_spe_asymm_vs_LO_asymm.SetPointX(num*16+point, 2*(graph2.GetPointY(point)-graph.GetPointY(point))/(graph2.GetPointY(point)+graph.GetPointY(point)))
+        if graph.GetPointY(point) < MIN_SPE_ch or graph.GetPointY(point) > MAX_SPE_ch:
+             isCatB = True
+             isCatA = False
     slot_data_spe_L[slot].append(GetMeanRMS(graph2)[0]) 
     slot_data_spe_R[slot].append(GetMeanRMS(graph)[0]) 
     slot_data_spe_L_err[slot].append(GetMeanRMS(graph2)[1]) 
@@ -249,7 +285,21 @@ for num, module in enumerate(modules):
     h_LO_avg_bar.Fill(GetMeanRMS(graph)[0])
     h_LOrms_bar.Fill(GetMeanRMS(graph)[1]/GetMeanRMS(graph)[0]*100.)
     h_LOmaxvar_bar.Fill(GetMaxVar(graph)/GetMeanRMS(graph)[0]*100.)
-    
+    #h_LO_avg_ch.Fill(graph.GetPointY(point))
+    if GetMeanRMS(graph)[0] < MIN_LO_bar:
+         isCatB = True
+         isCatA = False
+    for point in range(graph.GetN()):
+         h_LO_avg_ch.Fill(graph.GetPointY(point))
+         if graph.GetPointY(point) < MIN_LO_bar:
+             isCatB = True
+             isCatA = False
+
+
+
+
+
+
     slot_data_LO[slot].append(GetMeanRMS(graph)[0])
     slot_data_LO_err[slot].append(GetMeanRMS(graph)[1])
 
@@ -261,14 +311,25 @@ for num, module in enumerate(modules):
     for point in range(graph.GetN()):
         if graph.GetPointY(point)>1:
             print("asymm issue with module: ", module)
-        h_LO_asymm_ch.Fill(graph.GetPointY(point))
+        #h_LO_asymm_ch.Fill(graph.GetPointY(point))
         g_spe_vs_asymm_ch_L.SetPointY(num*16+point, graph.GetPointY(point))
         g_spe_vs_asymm_ch_R.SetPointY(num*16+point, graph.GetPointY(point))
         g_LO_vs_asymm_ch_L.SetPointY(num*16+point, graph.GetPointY(point))
         g_LO_vs_asymm_ch_R.SetPointY(num*16+point, graph.GetPointY(point))
         g_spe_asymm_vs_LO_asymm.SetPointY(num*16+point, graph.GetPointY(point))
         g_src_asymm_vs_LO_asymm.SetPointY(num*16+point, graph.GetPointY(point))
-            
+        if GetMeanRMS_abs(graph)[0] > MAX_LO_ASYMM_bar:
+             isCatB = True
+             isCatA = False
+    
+    for point in range(graph.GetN()):
+        h_LO_asymm_ch.Fill(graph.GetPointY(point)) 
+        if graph.GetPointY(point) < MIN_LO_ASYMM_ch or graph.GetPointY(point) > MAX_LO_ASYMM_ch:
+            isCatB = True
+            isCatA = False
+
+
+
     graph = rootfile.Get('g_L_light_yield_vs_bar')
     h_LO_L_bar.Fill(GetMeanRMS(graph)[0])
     for point in range(graph.GetN()):
@@ -276,6 +337,13 @@ for num, module in enumerate(modules):
         g_spe_vs_LO_ch_L.SetPointY(num*16+point, graph.GetPointY(point))
         g_LO_vs_asymm_ch_L.SetPointX(num*16+point, graph.GetPointX(point))
         g_src_vs_LO_ch_L.SetPointY(num*16+point, graph.GetPointY(point))
+        if graph.GetPointY(point) < MIN_LO_ch:
+            isCatB = True
+            isCatA = False
+    if GetMeanRMS(graph)[0] < MIN_LO_ch:
+        isCatB = True
+        isCatA = False
+
 
     graph = rootfile.Get('g_R_light_yield_vs_bar')
     h_LO_R_bar.Fill(GetMeanRMS(graph)[0])
@@ -284,10 +352,58 @@ for num, module in enumerate(modules):
         g_spe_vs_LO_ch_R.SetPointY(num*16+point, graph.GetPointY(point))
         g_LO_vs_asymm_ch_R.SetPointX(num*16+point, graph.GetPointX(point))
         g_src_vs_LO_ch_R.SetPointY(num*16+point, graph.GetPointY(point))
+        if graph.GetPointY(point) < MIN_LO_ch:
+            isCatB = True
+            isCatA = False
+    if GetMeanRMS(graph)[0] < MIN_LO_ch:
+        isCatB = True
+        isCatA = False
 
     graph = rootfile.Get('g_light_yield_vs_ch')
     h_LOrms_ch.Fill(GetMeanRMS(graph)[1]/GetMeanRMS(graph)[0]*100.)
     h_LOmaxvar_ch.Fill(GetMaxVar(graph)/GetMeanRMS(graph)[0]*100.)
+
+    
+
+    graph = rootfile.Get('g_avg_lyso_res_vs_bar')
+    h_LO_res_avg_bar.Fill(GetMeanRMS(graph)[0])
+    for point in range(graph.GetN()):
+        h_LO_res_bar.Fill(graph.GetPointY(point))
+        #g_spe_vs_LO_ch_L.SetPointY(num*16+point, graph.GetPointY(point))
+        #g_LO_vs_asymm_ch_L.SetPointX(num*16+point, graph.GetPointX(point))
+        #g_src_vs_LO_ch_L.SetPointY(num*16+point, graph.GetPointY(point))
+        if graph.GetPointY(point) > MAX_BAR_RES:
+            isCatB = True
+            isCatA = False
+
+
+    if isCatB == isCatA:
+        print('Error: a module cannot be both catA and catB')
+    if isCatA:
+        nCatA += 1
+    if isCatB:
+        nCatB += 1
+        print('>>> '+module+' is cat. B!!!')
+
+
+    if isCatA:
+        catAList.append(int(module))
+    if isCatB:
+        catBList.append(int(module))
+
+
+catAList.sort()
+catBList.sort()
+
+cat_dict = {"Category A Modules": catAList, "Category B Modules": catBList}
+
+print(str(nCatA) + " Cat A Modules")
+print(str(nCatB) + " Cat B Modules")
+
+with open("module_categorizations.json", 'w') as f:
+    json.dump(cat_dict, f)
+
+
 
 for i in range(12):
     g_slot_vs_spe_L.SetPointX(i,i)
@@ -311,7 +427,7 @@ for i in range(12):
 
 
 # draw histos
-
+print("Starting to draw histos")
 c = ROOT.TCanvas('c_spe_LR_ch','',800,700)
 ROOT.gPad.SetGridx()
 ROOT.gPad.SetGridy()
@@ -357,6 +473,45 @@ line_low.SetLineWidth(4)
 line_low.SetLineStyle(2)
 line_low.Draw('same')
 c.Print('%s/h_LO_avg_bar.png'%plotDir)
+
+c = ROOT.TCanvas('c_LO_res_avg_bar','',800,700)
+ROOT.gPad.SetGridx()
+ROOT.gPad.SetGridy()
+h_LO_res_avg_bar.SetTitle(';avg. Bar LO Resolution;entries')
+h_LO_res_avg_bar.SetFillStyle(3001)
+h_LO_res_avg_bar.SetFillColor(ROOT.kBlack)
+h_LO_res_avg_bar.Draw()
+#latex = ROOT.TLatex(0.64,0.60,'#splitline{mean: %.2e}{RMS: %.1f %%}'%(h_LO_avg_bar.GetMean(),h_LO_avg_bar.GetRMS()/h_LO_avg_bar.GetMean()*100.))
+#latex.SetNDC()
+#latex.SetTextSize(0.05)
+#latex.Draw('same') 
+#line_low = ROOT.TLine(0.85*3200.,0.,0.85*3200,1.05*h_LO_avg_bar.GetMaximum())
+#line_low.SetLineColor(ROOT.kGreen+1)
+#line_low.SetLineWidth(4)
+#line_low.SetLineStyle(2)
+#line_low.Draw('same')
+c.Print('%s/h_LO_res_avg_bar.png'%plotDir)
+
+
+
+c = ROOT.TCanvas('c_LO_res_bar','',800,700)
+ROOT.gPad.SetGridx()
+ROOT.gPad.SetGridy()
+h_LO_res_bar.SetTitle(';Bar LO Resolution;entries')
+h_LO_res_bar.SetFillStyle(3001)
+h_LO_res_bar.SetFillColor(ROOT.kBlack)
+h_LO_res_bar.Draw()
+#latex = ROOT.TLatex(0.64,0.60,'#splitline{mean: %.2e}{RMS: %.1f %%}'%(h_LO_avg_bar.GetMean(),h_LO_avg_bar.GetRMS()/h_LO_avg_bar.GetMean()*100.))
+#latex.SetNDC()
+#latex.SetTextSize(0.05)
+#latex.Draw('same') 
+#line_low = ROOT.TLine(0.85*3200.,0.,0.85*3200,1.05*h_LO_avg_bar.GetMaximum())
+#line_low.SetLineColor(ROOT.kGreen+1)
+#line_low.SetLineWidth(4)
+#line_low.SetLineStyle(2)
+#line_low.Draw('same')
+c.Print('%s/h_LO_res_bar.png'%plotDir)
+
 
 c = ROOT.TCanvas('c_LO_avg_ch','',800,700)
 ROOT.gPad.SetGridx()
