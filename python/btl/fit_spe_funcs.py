@@ -472,7 +472,7 @@ def fit_spe_tspectrum(h, root_func=False):
     #r = h.Fit(f1, '')
     #
     #return [f1.GetParameter(i) for i in range(14)], [f1.GetParError(i) for i in range(14)] 
-
+    #print("SPE Params: "+ str(fGaus[0].GetParameter(1))+"_"+str(fGaus[1].GetParameter(1)))
     if 0 in fGaus.keys() and 1 in fGaus.keys():
         return [fGaus[1].GetParameter(1)-fGaus[0].GetParameter(1)], [math.sqrt(pow(fGaus[1].GetParError(1),2)+pow(fGaus[0].GetParError(1),2))]
     else:

@@ -123,7 +123,7 @@ def run_command(cmd, progress_bar=None):
     stop_button.update()
     return p.returncode
 
-def save(filename=None):
+def save(filename=None, temps=[], applied_biases = []):
     """
     Save the GUI state from the json file specified by `filename`.
     """
@@ -144,6 +144,8 @@ def save(filename=None):
     data['stepper_dLperstep'] = stepper_dLperstep.get()
     data['n_spe_events'] = n_spe_events.get()
     data['n_source_events'] = n_source_events.get()
+    data['averaged_temps'] = temps
+    data['applied_biases'] = applied_biases
     print("Saving GUI state into '%s'" % filename)
     with open(filename,'w') as f:
         json.dump(data,f)
@@ -434,6 +436,7 @@ def take_data():
    hv_off(client)
    
    # Now, we turn them on one by one and take data
+   qaqc_temps, applied_biases = np.zeros(12), np.zeros(12)
    for i in range(12):
       
       if not module_available[i].get():
@@ -464,12 +467,20 @@ def take_data():
       else:
           print(f"Read Side-Averaged Temperature of {avg_temp}C. Adjusting bias voltage accordingly.")
       vbd_change = (avg_temp-23)*0.0375
-          
-
+      
+      
+      #vbd_change=0 #COMMENT OUT WHEN TRYTING TO VARY BIAS BASED ON TEMPERATURE
 
       hv = float(vbd) + vbd_change +float(ov.get())
       print('Setting absolute bias voltage %.2f for module %i\n' %(hv,i) )
-      
+      qaqc_temps[i] = avg_temp
+      applied_biases[i] = hv
+      try:
+        save(run_path+'/qaqc_gui.settings', qaqc_temps.tolist(), applied_biases.tolist())
+      except:
+        print_warning("Not a valid data path: %s\n" % run_path)
+        return
+
       try:
          filename = filename_template(data_path=run_path, barcode=barcode, label=label.get())+'.hdf5'
       except:
@@ -618,14 +629,14 @@ def take_data():
       entry.update()
       
       out_filename = "%s_analysis.root" % root
-      cmd = [ANALYZE_WAVEFORMS_PROGRAM,'-o',out_filename,'--slot',i,'--sourceType','cesium','--print-pdfs',run_path,filename]
+      cmd = [ANALYZE_WAVEFORMS_PROGRAM,'-o',out_filename,'--slot',i,'--sourceType','sodium','--print-pdfs',run_path,filename]
       
       if run_command(cmd,progress_bar=i):
          module_status[i].config(text="Failed analysis")
          continue
       out_filename = out_filename.replace(".root", "_both_calibs.root")
-      cmd = [ANALYZE_WAVEFORMS_PROGRAM,'-o',out_filename,'--slot',i,'--sourceType','cesium','--calibration', 'both', '--print-pdfs',run_path,filename]
-      
+      cmd = [ANALYZE_WAVEFORMS_PROGRAM,'-o',out_filename,'--slot',i,'--sourceType','sodium','--calibration', 'both', '--print-pdfs',run_path,filename]
+     
       if run_command(cmd,progress_bar=i):
          module_status[i].config(text="Failed analysis")
          continue

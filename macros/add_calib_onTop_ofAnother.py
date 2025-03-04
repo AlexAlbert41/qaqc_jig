@@ -13,7 +13,7 @@ import tdrstyle
 
 
 # paths 
-calib_path = '/data/QAQC_SM/qaqc-gui_output/calibs/'
+calib_path = '/data/QAQC_SM/qaqc-gui_output/calibs_sodium'
 calib1 = '{}/calib_scale.root'.format(calib_path)
 calib2 = '{}/calib_channels.root'.format(calib_path)
 out_calib = '{}/master_calib_channels_scale.root'.format(calib_path)

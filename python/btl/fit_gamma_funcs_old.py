@@ -5,16 +5,6 @@ import ROOT
 
 FIT_OPTIONS = 'LSB' 
 
-
-def GetHWHM(h,peak):
-    for ibin in range(h.GetNbinsX()+1):
-        if h.GetBinCenter(ibin) < peak:
-            continue
-        if  h.GetBinContent(ibin) <= 0.5*h.GetBinContent(h.FindBin(peak)):
-            return h.GetBinCenter(ibin) - h.GetBinCenter(h.FindBin(peak))
-    return -1.
-
-
 def ROOT_peaks(h, width=10, height=0.05, npeaks=4, options="", sort=True):
     """
     Finds peaks in hisogram `h`. `height` is measured as a fraction of the
@@ -28,37 +18,28 @@ def ROOT_peaks(h, width=10, height=0.05, npeaks=4, options="", sort=True):
     See ROOT TSpectrum documentation for peak finding details:
     https://root.cern.ch/root/htmldoc/guides/spectrum/Spectrum.html#processing-and-visualization-functions
     """
-    sort=True
-    #print(sort)
+    
     spec = ROOT.TSpectrum(npeaks)
     highest_peak = None
-    
+
     n_pks = spec.Search(h, width, options, height)               
     x_pos = spec.GetPositionX()
     x_pos = np.array([x_pos[i] for i in range(n_pks)])
 
     if sort:
-        #print("sorting")
         x_pos.sort()
-    #print("x pos: ",x_pos) 
-    x_pos = x_pos[::-1]
-    maxval = -999.
+        
     if len(x_pos) != 0:
-        for pos in x_pos:
-            print("pos: ", pos)
-            print(h.GetBinContent(h.FindBin(pos)))
-            if h.GetBinContent(h.FindBin(pos)) > 30: #switch from 30 to "maxVal" when taking data with fits as intended, this is for additional study
-                #print(h.GetBinContent(h.FindBin(pos)))
-                maxval = h.GetBinContent(h.FindBin(pos))
-                highest_peak = pos
-                break #added for Cesium saturation correction, should be removed later
-        #if sort: commented out for study
-        #    highest_peak = x_pos[len(x_pos)-1]
+        highest_peak = x_pos[0]
+        if sort:
+            highest_peak = x_pos[len(x_pos)-1]
     
     #print('found peaks: ', x_pos)
     #print('highest peak:', highest_peak)
     
-    return highest_peak
+    ind = np.argsort(x_pos)
+    x_pos = x_pos[ind]
+    return (x_pos, highest_peak)
 
 def fit_gamma(h, eng, offset=0, offset_sigma=10):
     """
@@ -71,7 +52,7 @@ def fit_gamma(h, eng, offset=0, offset_sigma=10):
     nPeaks = 3
 
     h.GetXaxis().SetRangeUser(300.,h.GetBinCenter(h.GetNbinsX()-1))
-    peak = ROOT_peaks(h,width=10,height=0.2,npeaks=nPeaks,options='nobackground',sort=False)
+    _ ,peak = ROOT_peaks(h,width=10,height=0.2,npeaks=nPeaks,options='nobackground')
     if (peak == None): peak = 1300
     h.GetXaxis().SetRangeUser(0.,h.GetBinCenter(h.GetNbinsX()-1))
     
@@ -104,11 +85,12 @@ def fit_gamma(h, eng, offset=0, offset_sigma=10):
     
     
     # Gaussian + linear background
-    f = ROOT.TF1(f"{h.GetName()}_fit",f"[2]*exp(-0.5*(x-{offset}-[0]*{eng})**2/([1]*{eng})**2)", peak*0.8, peak*1.2)
+    f = ROOT.TF1(f"{h.GetName()}_fit",f"[2]*exp(-0.5*(x-{offset}-[0]*{eng})**2/([1]*{eng})**2)", peak*0.5, peak*1.5)
+    sigma = h.GetRMS()
     f.SetNpx(10000)
     f.SetLineColor(ROOT.kTeal)
     f.SetParameter(0, (peak-offset)/eng)
-    f.SetParameter(1,  2.*GetHWHM(h,peak)/2.36/eng)
+    f.SetParameter(1, 0.08*peak/eng)
     f.SetParameter(2, h.GetBinContent(h.FindBin(peak)))
     f.SetParLimits(1,0.,100.)
     r = h.Fit(f, 'QLSB0',  '', 0.9*peak, 1.1*peak)
@@ -121,7 +103,7 @@ def fit_gamma(h, eng, offset=0, offset_sigma=10):
     # reasons.
     
     f.SetLineColor(ROOT.kGreen)
-    r = h.Fit(f, 'QLSB+', '', offset+eng*f.GetParameter(0) - 1.*eng*abs(f.GetParameter(1)), offset+eng*f.GetParameter(0) + 1.*eng*abs(f.GetParameter(1)))
+    r = h.Fit(f, 'QLSB+', '', offset+eng*f.GetParameter(0) - 0.75*eng*abs(f.GetParameter(1)), offset+eng*f.GetParameter(0) + 1.*eng*abs(f.GetParameter(1)))
     f.Write()
 
     if 'nullptr' in str(r):
@@ -143,20 +125,20 @@ def fit_offset(h):
     Returns the fit parameters.
     """
     peak = h.GetBinCenter(h.GetMaximumBin())
+    sigma = h.GetRMS()
     # FIXME: Gaussian noise model is just a guess. However, we really only need
     # the average noise, which a narrow Gaussian can roughly estimate.
-    f = ROOT.TF1(f"{h.GetName()}_offset_fit", "gaus", -50., 50.)
+    f = ROOT.TF1(f"{h.GetName()}_offset_fit", "gaus", -100, 100)
     f.SetNpx(10000)
-    f.SetLineColor(ROOT.kGreen)
+    f.SetLineColor(ROOT.kRed)
     f.SetParameter(1, peak)
-    f.SetParameter(2, 2.*GetHWHM(h,peak)/2.36)
+    f.SetParameter(2, sigma)
     f.SetParameter(0, h.GetBinContent(h.FindBin(peak)))
-    r = h.Fit(f, 'QLSB0', '', peak-25., peak+25.)
+    r = h.Fit(f, 'Q0RLSB', '', peak-sigma, peak+sigma)
     #h.Write()
     
     # Secondary fit that we limit to +/-1 sigma. 
-    f.SetLineColor(ROOT.kGreen)
-    r = h.Fit(f, 'QLSB+', '', f.GetParameter(1) - abs(f.GetParameter(2)), f.GetParameter(1) + abs(f.GetParameter(2)))
+    r = h.Fit(f, 'QRLSB+', '', f.GetParameter(1) - abs(f.GetParameter(2)), f.GetParameter(1) + abs(f.GetParameter(2)))
     f.Write()
     #h.Write()
     
@@ -170,3 +152,4 @@ def fit_offset(h):
     # 0: scale
     par_order = (1, 2, 0)
     return [f.GetParameter(i) for i in par_order], [f.GetParError(i) for i in par_order]
+

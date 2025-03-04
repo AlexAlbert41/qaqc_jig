@@ -1803,7 +1803,7 @@ WaveDumpConfig_t get_source_settings()
              * to Vpp. The range shifts lineraly by setting the DC offset
              * between 22000 and 48000. For example, at 35000, the range is
              * -Vpp/2 to +Vpp/2.*/
-            WDcfg.DCoffsetGrpCh[i][j] = 28500;
+            WDcfg.DCoffsetGrpCh[i][j] = 22000;
         }
     }
 

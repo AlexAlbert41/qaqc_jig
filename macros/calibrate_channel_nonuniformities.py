@@ -43,10 +43,10 @@ print(inputFiles)
 for inputFile in inputFiles:
     tokens = inputFile.split('/')
     run = ''
-    for token in tokens:
+    for num, token in enumerate(tokens):
         if 'module' in token:
             module = token[7:21] # SM ID
-        if 'run' in token:
+        if 'run' in token and num!=1:
             run = int(token[3:]) # run number
     modules.append(module)
     params[module] = [inputFile,run,'GOOD']

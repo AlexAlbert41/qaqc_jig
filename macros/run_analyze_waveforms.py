@@ -15,10 +15,11 @@ import json
 import numpy as np
 #from typing import NamedTuple
 
-data_path = '/home/cptlab/mnt/btl-upload/upload/QAQC_SM/qaqc-gui_output/SM_QAQC_Production/'
+#data_path = '/home/cptlab/mnt/btl-upload/upload/QAQC_SM/qaqc-gui_output/SM_QAQC_Production/'
+data_path = '/home/cptlab/mnt/btl-upload/upload/QAQC_SM/qaqc-gui_output/SM_QAQC_Production'
 data_path_2 = '/home/cptlab/mnt/btl-upload/upload/from_cptlab_100724/qaqc-gui_output/SM_QAQC_Production/'
 selections = []
-plotDir = '/data/QAQC_SM/qaqc-gui_output/SM_results_after_calibrations_scale_and_channel/'
+plotDir = '/data/QAQC_SM/qaqc-gui_output/Sodium_Production_ReCalibration/'
 
 
 #set the tdr style
@@ -38,9 +39,10 @@ params = {}
 # retrieving root files 
 inputFiles1 = glob.glob(data_path+'/run*/*_integrals.hdf5')
 gui_settings_files1 = glob.glob(data_path+'/run*/qaqc_gui.settings')
-inputFiles2 = glob.glob(data_path_2+'/run*/*_integrals.hdf5')
-gui_settings_files2 = glob.glob(data_path_2+'/run*/qaqc_gui.settings')
-inputFiles = inputFiles1+inputFiles2
+#inputFiles2 = glob.glob(data_path_2+'/run*/*_integrals.hdf5')
+gui_settings_files2 = glob.glob(data_path+'/run*/qaqc_gui.settings')
+#inputFiles = inputFiles1+inputFiles2
+inputFiles = inputFiles1
 gui_settings_files = gui_settings_files1+gui_settings_files2
 print(inputFiles)
 print(gui_settings_files)
@@ -66,16 +68,19 @@ print(len(modules))
 modules_tested = ["32110020000016"]
 counter=0
 for num, module in enumerate(modules):
-    print("Module: ", module)
-    print(counter)
+    #print("Module: ", module)
+    #print(counter)
     counter+=1
-    #if counter==1:
+    #if counter>1:
     #    break
     if module in modules_tested:
         continue
     modules_tested.append(module)
     param = params[module]
     accept = 1
+    #if "32110020008617" not in module:continue
+    #print(int(module))
+    if int(module)<32110020008694:continue #this is when we started using sodium 
     if "32110020008456" in module:
     #    print("skipping module")
         continue
@@ -103,6 +108,6 @@ for num, module in enumerate(modules):
     #{plotDir}    accept *= tempAccept
     if accept == 0:
         continue
-    out_file = f"{plotDir}/module{module}_analysis__both_calibs.root"
+    out_file = f"{plotDir}/module{module}_analysis_new_sodium_calib.root"
     #print(f"~/AlexAlbert41/qaqc_jig/python/analyze-waveforms {params[module][0]} -o {out_file} --sourceType cesium --print-pdfs {plotDir}")
-    os.system(f"analyze-waveforms {params[module][0]} -o {out_file} --slot {slot} --sourceType cesium --print-pdfs {plotDir}")
+    os.system(f"analyze-waveforms {params[module][0]} -o {out_file} --slot {slot} --calibration 'both' --sourceType sodium --print-pdfs {plotDir}")
